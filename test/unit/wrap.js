@@ -60,7 +60,7 @@ function testWrap( val, assert ) {
 	j.wrap( val( "<i></i>" ) );
 
 	assert.equal(
-		jQuery( "#nonnodes > i" ).length, jQuery( "#nonnodes" )[ 0 ].childNodes.length,
+		jQuery( "#nonnodes > i" ).length, 3,
 		"Check node,textnode,comment wraps ok"
 	);
 	assert.equal(
@@ -472,7 +472,7 @@ QUnit.test( "unwrap( selector )", function( assert ) {
 		jQuery( "#unwrap1" ).length, 1, "still wrapped"
 	);
 
-	 // Shouldn't unwrap, no match
+	// Shouldn't unwrap, no match
 	jQuery( "#unwrap1 span" ) .unwrap( "span" );
 	assert.equal(
 		jQuery( "#unwrap1" ).length, 1, "still wrapped"

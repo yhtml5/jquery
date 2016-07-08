@@ -1,7 +1,6 @@
-/*jshint multistr:true, quotmark:false */
+/* eslint no-multi-str: "off" */
 
-var fireNative, originaljQuery, original$,
-	baseURL = "",
+var baseURL = "",
 	supportjQuery = this.jQuery,
 
 	// see RFC 2606
@@ -12,8 +11,8 @@ this.isLocal = window.location.protocol === "file:";
 
 // Setup global variables before loading jQuery for testing .noConflict()
 supportjQuery.noConflict( true );
-originaljQuery = this.jQuery = undefined;
-original$ = this.$ = "replaced";
+window.originaljQuery = this.jQuery = undefined;
+window.original$ = this.$ = "replaced";
 
 /**
  * Returns an array of elements with the given IDs
@@ -32,57 +31,81 @@ this.q = function() {
 
 /**
  * Asserts that a select matches the given IDs
- * @param {String} a - Assertion name
- * @param {String} b - Sizzle selector
- * @param {String} c - Array of ids to construct what is expected
- * @example t("Check for something", "//[a]", ["foo", "bar"]);
- * @result returns true if "//[a]" return two elements with the IDs 'foo' and 'bar'
+ * @param {String} message - Assertion name
+ * @param {String} selector - Sizzle selector
+ * @param {String} expectedIds - Array of ids to construct what is expected
+ * @param {(String|Node)=document} context - Selector context
+ * @example match("Check for something", "p", ["foo", "bar"]);
  */
-QUnit.assert.t = function( a, b, c ) {
-	var f = jQuery( b ).get(),
+function match( message, selector, expectedIds, context ) {
+	var f = jQuery( selector, context ).get(),
 		s = "",
 		i = 0;
 
 	for ( ; i < f.length; i++ ) {
-		s += ( s && "," ) + '"' + f[ i ].id + '"';
+		s += ( s && "," ) + "\"" + f[ i ].id + "\"";
 	}
 
-	this.deepEqual( f, q.apply( q, c ), a + " (" + b + ")" );
+	this.deepEqual( f, q.apply( q, expectedIds ), message + " (" + selector + ")" );
+}
+
+/**
+ * Asserts that a select matches the given IDs.
+ * The select is not bound by a context.
+ * @param {String} message - Assertion name
+ * @param {String} selector - Sizzle selector
+ * @param {String} expectedIds - Array of ids to construct what is expected
+ * @example t("Check for something", "p", ["foo", "bar"]);
+ */
+QUnit.assert.t = function( message, selector, expectedIds ) {
+	match( message, selector, expectedIds, undefined );
+};
+
+/**
+ * Asserts that a select matches the given IDs.
+ * The select is performed within the `#qunit-fixture` context.
+ * @param {String} message - Assertion name
+ * @param {String} selector - Sizzle selector
+ * @param {String} expectedIds - Array of ids to construct what is expected
+ * @example selectInFixture("Check for something", "p", ["foo", "bar"]);
+ */
+QUnit.assert.selectInFixture = function( message, selector, expectedIds ) {
+	match( message, selector, expectedIds, "#qunit-fixture" );
 };
 
 this.createDashboardXML = function() {
-	var string = '<?xml version="1.0" encoding="UTF-8"?> \
+	var string = "<?xml version='1.0' encoding='UTF-8'?> \
 	<dashboard> \
-		<locations class="foo"> \
-			<location for="bar" checked="different"> \
-				<infowindowtab normal="ab" mixedCase="yes"> \
-					<tab title="Location"><![CDATA[blabla]]></tab> \
-					<tab title="Users"><![CDATA[blublu]]></tab> \
+		<locations class='foo'> \
+			<location for='bar' checked='different'> \
+				<infowindowtab normal='ab' mixedCase='yes'> \
+					<tab title='Location'><![CDATA[blabla]]></tab> \
+					<tab title='Users'><![CDATA[blublu]]></tab> \
 				</infowindowtab> \
 			</location> \
 		</locations> \
-	</dashboard>';
+	</dashboard>";
 
 	return jQuery.parseXML( string );
 };
 
 this.createWithFriesXML = function() {
-	var string = '<?xml version="1.0" encoding="UTF-8"?> \
-	<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" \
-		xmlns:xsd="http://www.w3.org/2001/XMLSchema" \
-		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"> \
+	var string = "<?xml version='1.0' encoding='UTF-8'?> \
+	<soap:Envelope xmlns:soap='http://schemas.xmlsoap.org/soap/envelope/' \
+		xmlns:xsd='http://www.w3.org/2001/XMLSchema' \
+		xmlns:xsi='http://www.w3.org/2001/XMLSchema-instance'> \
 		<soap:Body> \
-			<jsconf xmlns="http://{{ externalHost }}/ns1"> \
-				<response xmlns:ab="http://{{ externalHost }}/ns2"> \
+			<jsconf xmlns='http://{{ externalHost }}/ns1'> \
+				<response xmlns:ab='http://{{ externalHost }}/ns2'> \
 					<meta> \
-						<component id="seite1" class="component"> \
-							<properties xmlns:cd="http://{{ externalHost }}/ns3"> \
-								<property name="prop1"> \
+						<component id='seite1' class='component'> \
+							<properties xmlns:cd='http://{{ externalHost }}/ns3'> \
+								<property name='prop1'> \
 									<thing /> \
 									<value>1</value> \
 								</property> \
-								<property name="prop2"> \
-									<thing att="something" /> \
+								<property name='prop2'> \
+									<thing att='something' /> \
 								</property> \
 								<foo_bar>foo</foo_bar> \
 							</properties> \
@@ -91,7 +114,7 @@ this.createWithFriesXML = function() {
 				</response> \
 			</jsconf> \
 		</soap:Body> \
-	</soap:Envelope>';
+	</soap:Envelope>";
 
 	return jQuery.parseXML( string.replace( /\{\{\s*externalHost\s*\}\}/g, externalHost ) );
 };
@@ -99,7 +122,7 @@ this.createWithFriesXML = function() {
 this.createXMLFragment = function() {
 	var xml, frag;
 	if ( window.ActiveXObject ) {
-		xml = new ActiveXObject( "msxml2.domdocument" );
+		xml = new window.ActiveXObject( "msxml2.domdocument" );
 	} else {
 		xml = document.implementation.createDocument( "", "", null );
 	}
@@ -111,7 +134,7 @@ this.createXMLFragment = function() {
 	return frag;
 };
 
-fireNative = document.createEvent ?
+window.fireNative = document.createEvent ?
 	function( node, type ) {
 		var event = document.createEvent( "HTMLEvents" );
 
@@ -208,46 +231,15 @@ this.ajaxTest = function( title, expect, options ) {
 	} );
 };
 
-this.testIframe = function( fileName, name, fn ) {
-	QUnit.test( name, function( assert ) {
-		var done = assert.async();
-
-		// load fixture in iframe
-		var iframe = loadFixture(),
-			win = iframe.contentWindow,
-			interval = setInterval( function() {
-				if ( win && win.jQuery && win.jQuery.isReady ) {
-					clearInterval( interval );
-
-					// call actual tests passing the correct jQuery instance to use
-					fn.call( this, win.jQuery, win, win.document, assert );
-					done();
-					document.body.removeChild( iframe );
-					iframe = null;
-				}
-			}, 15 );
-	} );
-
-	function loadFixture() {
-		var src = url( "./data/" + fileName + ".html" ),
-			iframe = jQuery( "<iframe />" ).appendTo( "body" )[ 0 ];
-			iframe.style.cssText = "width: 500px; height: 500px; position: absolute; " +
-				"top: -600px; left: -600px; visibility: hidden;";
-
-		iframe.contentWindow.location = src;
-		return iframe;
-	}
-};
-
-this.testIframeWithCallback = function( title, fileName, func ) {
-	QUnit.test( title, 1, function( assert ) {
+this.testIframe = function( title, fileName, func ) {
+	QUnit.test( title, function( assert ) {
 		var iframe;
 		var done = assert.async();
 
 		window.iframeCallback = function() {
 			var args = Array.prototype.slice.call( arguments );
 
-			args.push( assert );
+			args.unshift( assert );
 
 			setTimeout( function() {
 				this.iframeCallback = undefined;
@@ -255,7 +247,6 @@ this.testIframeWithCallback = function( title, fileName, func ) {
 				func.apply( this, args );
 				func = function() {};
 				iframe.remove();
-
 				done();
 			} );
 		};
@@ -269,9 +260,10 @@ this.iframeCallback = undefined;
 // Tests are always loaded async
 QUnit.config.autostart = false;
 this.loadTests = function() {
+
 	// Leverage QUnit URL parsing to detect testSwarm environment and "basic" testing mode
-	var loadSwarm = ( QUnit.urlParams[ "swarmURL" ] + "" ).indexOf( "http" ) === 0,
-		basicTests = ( QUnit.urlParams[ "module" ] + "" ) === "basic";
+	QUnit.isSwarm = ( QUnit.urlParams.swarmURL + "" ).indexOf( "http" ) === 0;
+	QUnit.basicTests = ( QUnit.urlParams.module + "" ) === "basic";
 
 	// Get testSubproject from testrunner first
 	require( [ "data/testrunner.js" ], function() {
@@ -311,7 +303,7 @@ this.loadTests = function() {
 			var dep = tests[ i++ ];
 
 			if ( dep ) {
-				if ( !basicTests || i === 1 ) {
+				if ( !QUnit.basicTests || i === 1 ) {
 					require( [ dep ], loadDep );
 
 				// Support: Android 2.3 only
@@ -333,7 +325,7 @@ this.loadTests = function() {
 				}
 
 				// Load the TestSwarm listener if swarmURL is in the address.
-				if ( loadSwarm ) {
+				if ( QUnit.isSwarm ) {
 					require( [ "http://swarm.jquery.org/js/inject.js?" + ( new Date() ).getTime() ],
 					function() {
 						QUnit.start();

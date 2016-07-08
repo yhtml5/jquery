@@ -3,6 +3,8 @@ define( [
 	"../css"
 ], function( jQuery ) {
 
+"use strict";
+
 function Tween( elem, options, prop, end, easing ) {
 	return new Tween.prototype.init( elem, options, prop, end, easing );
 }
@@ -27,12 +29,17 @@ Tween.prototype = {
 			Tween.propHooks._default.get( this );
 	},
 	run: function( percent ) {
-		var hooks = Tween.propHooks[ this.prop ];
+		var eased,
+			hooks = Tween.propHooks[ this.prop ];
 
-		this.pos = this.options.duration ?
-			jQuery.easing[ this.easing ]( percent ) :
-			percent;
-		this.now = ( this.end - this.start ) * this.pos + this.start;
+		if ( this.options.duration ) {
+			this.pos = eased = jQuery.easing[ this.easing ](
+				percent, this.options.duration * percent, 0, 1, this.options.duration
+			);
+		} else {
+			this.pos = eased = percent;
+		}
+		this.now = ( this.end - this.start ) * eased + this.start;
 
 		if ( this.options.step ) {
 			this.options.step.call( this.elem, this.now, this );
@@ -88,7 +95,7 @@ Tween.propHooks = {
 	}
 };
 
-// Support: IE9
+// Support: IE <=9 only
 // Panic based approach to setting things on disconnected nodes
 Tween.propHooks.scrollTop = Tween.propHooks.scrollLeft = {
 	set: function( tween ) {
@@ -110,7 +117,7 @@ jQuery.easing = {
 
 jQuery.fx = Tween.prototype.init;
 
-// Back Compat <1.8 extension point
+// Back compat <1.8 extension point
 jQuery.fx.step = {};
 
 } );

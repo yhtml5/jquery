@@ -277,7 +277,7 @@ QUnit.test( "data-* attributes", function( assert ) {
 
 	var prop, i, l, metadata, elem,
 		obj, obj2, check, num, num2,
-		parseJSON = jQuery.parseJSON,
+		parseJSON = JSON.parse,
 		div = jQuery( "<div>" ),
 		child = jQuery( "<div data-myobj='old data' data-ignored=\"DOM\" data-other='test' data-foo-42='boosh'></div>" ),
 		dummy = jQuery( "<div data-myobj='old data' data-ignored=\"DOM\" data-other='test' data-foo-42='boosh'></div>" );
@@ -336,7 +336,7 @@ QUnit.test( "data-* attributes", function( assert ) {
 
 	// attribute parsing
 	i = 0;
-	jQuery.parseJSON = function() {
+	JSON.parse = function() {
 		i++;
 		return parseJSON.apply( this, arguments );
 	};
@@ -389,7 +389,7 @@ QUnit.test( "data-* attributes", function( assert ) {
 	assert.strictEqual( child.data( "string" ), "test", "Typical string read from attribute" );
 	assert.equal( i, 2, "Correct number of JSON parse attempts when reading from attributes" );
 
-	jQuery.parseJSON = parseJSON;
+	JSON.parse = parseJSON;
 	child.remove();
 
 	// tests from metadata plugin
@@ -409,7 +409,7 @@ QUnit.test( "data-* attributes", function( assert ) {
 			break;
 		case 3:
 			assert.equal( jQuery( elem ).data( "number" ), true, "Check number property" );
-			assert.deepEqual( jQuery( elem ).data( "stuff" ), [ 2,8 ], "Check stuff property" );
+			assert.deepEqual( jQuery( elem ).data( "stuff" ), [ 2, 8 ], "Check stuff property" );
 			break;
 		default:
 			assert.ok( false, [ "Assertion failed on index ", index, ", with data" ].join( "" ) );
@@ -857,10 +857,10 @@ QUnit.test( "Check proper data removal of non-element descendants nodes (#8335)"
 	assert.ok( !text.data( "test" ), "Be sure data is not stored in non-element" );
 } );
 
-testIframeWithCallback(
+testIframe(
 	"enumerate data attrs on body (#14894)",
 	"data/dataAttrs.html",
-	function( result, assert ) {
+	function( assert, jQuery, window, document, result ) {
 		assert.expect( 1 );
 		assert.equal( result, "ok", "enumeration of data- attrs on body" );
 	}
@@ -881,13 +881,13 @@ QUnit.test( "Check that the expando is removed when there's no more data", funct
 			assert.strictEqual( div[ 0 ][ key ], undefined, "Expando was not removed when there was no more data" );
 		}
 	}
-});
+} );
 
 QUnit.test( "Check that the expando is removed when there's no more data on non-nodes", function( assert ) {
 	assert.expect( 1 );
 
 	var key,
-		obj = jQuery( {key: 42} );
+		obj = jQuery( { key: 42 } );
 	obj.data( "some", "data" );
 	assert.equal( obj.data( "some" ), "data", "Data is added" );
 	obj.removeData( "some" );

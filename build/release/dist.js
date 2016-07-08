@@ -55,16 +55,40 @@ module.exports = function( Release, files, complete ) {
 	function copy() {
 
 		// Copy dist files
-		var distFolder = Release.dir.dist + "/dist";
+		var distFolder = Release.dir.dist + "/dist",
+			externalFolder = Release.dir.dist + "/external",
+			rmIgnore = files
+				.concat( [
+					"README.md",
+					"node_modules"
+				] )
+				.map( function( file ) {
+					return Release.dir.dist + "/" + file;
+				} );
+
+		shell.config.globOptions = {
+			ignore: rmIgnore
+		};
+
+		// Remove extraneous files before copy
+		shell.rm( "-rf", Release.dir.dist + "/**/*" );
+
 		shell.mkdir( "-p", distFolder );
 		files.forEach( function( file ) {
 			shell.cp( "-f", Release.dir.repo + "/" + file, distFolder );
 		} );
 
+		// Copy Sizzle
+		shell.mkdir( "-p", externalFolder );
+		shell.cp( "-rf", Release.dir.repo + "/external/sizzle", externalFolder );
+
 		// Copy other files
 		extras.forEach( function( file ) {
 			shell.cp( "-rf", Release.dir.repo + "/" + file, Release.dir.dist );
 		} );
+
+		// Remove the wrapper from the dist repo
+		shell.rm( "-f", Release.dir.dist + "/src/wrapper.js" );
 
 		// Write generated bower file
 		fs.writeFileSync( Release.dir.dist + "/bower.json", generateBower() );
@@ -73,7 +97,7 @@ module.exports = function( Release, files, complete ) {
 		Release.exec( "git add .", "Error adding files." );
 		Release.exec(
 			"git commit -m 'Release " + Release.newVersion + "'",
-			"Error commiting files."
+			"Error committing files."
 		);
 		console.log();
 

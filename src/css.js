@@ -7,7 +7,6 @@ define( [
 	"./var/rcssNum",
 	"./css/var/rnumnonpx",
 	"./css/var/cssExpand",
-	"./css/var/isHidden",
 	"./css/var/getStyles",
 	"./css/var/swap",
 	"./css/curCSS",
@@ -19,7 +18,9 @@ define( [
 	"./core/ready",
 	"./selector" // contains
 ], function( jQuery, pnum, access, rmargin, document, rcssNum, rnumnonpx, cssExpand,
-	isHidden, getStyles, swap, curCSS, adjustCSS, addGetHookIf, support ) {
+	getStyles, swap, curCSS, adjustCSS, addGetHookIf, support ) {
+
+"use strict";
 
 var
 
@@ -120,18 +121,11 @@ function getWidthOrHeight( elem, name, extra ) {
 		styles = getStyles( elem ),
 		isBorderBox = jQuery.css( elem, "boxSizing", false, styles ) === "border-box";
 
-	// Support: IE <= 11 only
+	// Support: IE <=11 only
 	// Running getBoundingClientRect on a disconnected node
 	// in IE throws an error.
 	if ( elem.getClientRects().length ) {
 		val = elem.getBoundingClientRect()[ name ];
-	}
-
-	// Support: IE11 only
-	// In IE 11 fullscreen elements inside of an iframe have
-	// 100x too small dimensions (gh-1764).
-	if ( document.msFullscreenElement && window.top !== window ) {
-		val *= 100;
 	}
 
 	// Some non-html elements return undefined for offsetWidth, so check for null/undefined
@@ -190,6 +184,7 @@ jQuery.extend( {
 
 	// Don't automatically add "px" to these possibly-unitless properties
 	cssNumber: {
+		"animationIterationCount": true,
 		"columnCount": true,
 		"fillOpacity": true,
 		"flexGrow": true,
@@ -251,7 +246,6 @@ jQuery.extend( {
 				value += ret && ret[ 3 ] || ( jQuery.cssNumber[ origName ] ? "" : "px" );
 			}
 
-			// Support: IE9-11+
 			// background-* props affect original clone's values
 			if ( !support.clearCloneStyle && value === "" && name.indexOf( "background" ) === 0 ) {
 				style[ name ] = "inherit";
@@ -325,7 +319,7 @@ jQuery.each( [ "height", "width" ], function( i, name ) {
 					// Support: Safari 8+
 					// Table columns in Safari have non-zero offsetWidth & zero
 					// getBoundingClientRect().width unless display is changed.
-					// Support: IE <= 11 only
+					// Support: IE <=11 only
 					// Running getBoundingClientRect on a disconnected node
 					// in IE throws an error.
 					( !elem.getClientRects().length || !elem.getBoundingClientRect().width ) ?

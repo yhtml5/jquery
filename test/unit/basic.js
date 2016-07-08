@@ -76,7 +76,7 @@ QUnit.test( "show/hide", function( assert ) {
 }
 
 QUnit.test( "core", function( assert ) {
-	assert.expect( 28 );
+	assert.expect( 27 );
 
 	var elem = jQuery( "<div></div><span></span>" );
 
@@ -135,8 +135,6 @@ QUnit.test( "core", function( assert ) {
 
 	assert.strictEqual( jQuery.parseHTML( "<div></div><span></span>" ).length,
 		2, "jQuery.parseHTML" );
-
-	assert.deepEqual( jQuery.parseJSON( "{\"a\": 2}" ), { a: 2 }, "jQuery.parseJON" );
 } );
 
 QUnit.test( "data", function( assert ) {
@@ -189,10 +187,7 @@ QUnit.test( "manipulation", function( assert ) {
 	assert.strictEqual( elem1.text( "foo" ).text(), "foo", ".html getter/setter" );
 
 	assert.strictEqual(
-
-		// Support: IE 8 only
-		// IE 8 prints tag names in upper case.
-		elem1.html( "<span/>" ).html().toLowerCase(),
+		elem1.html( "<span/>" ).html(),
 		"<span></span>",
 		".html getter/setter"
 	);
@@ -205,10 +200,7 @@ QUnit.test( "manipulation", function( assert ) {
 	child.before( "<b/>" );
 
 	assert.strictEqual(
-
-		// Support: IE 8 only
-		// IE 8 prints tag names in upper case.
-		elem1.html().toLowerCase(),
+		elem1.html(),
 		"<div></div><b></b><span></span><a></a>",
 		".after/.before"
 	);
@@ -277,10 +269,7 @@ QUnit.test( "wrap", function( assert ) {
 	elem.find( "b" ).wrap( "<span>" );
 
 	assert.strictEqual(
-
-		// Support: IE 8 only
-		// IE 8 prints tag names in upper case.
-		elem.html().toLowerCase(),
+		elem.html(),
 		"<a><span><b></b></span></a><a></a>",
 		".wrap"
 	);
@@ -288,10 +277,7 @@ QUnit.test( "wrap", function( assert ) {
 	elem.find( "span" ).wrapInner( "<em>" );
 
 	assert.strictEqual(
-
-		// Support: IE 8 only
-		// IE 8 prints tag names in upper case.
-		elem.html().toLowerCase(),
+		elem.html(),
 		"<a><span><em><b></b></em></span></a><a></a>",
 		".wrapInner"
 	);
@@ -299,10 +285,7 @@ QUnit.test( "wrap", function( assert ) {
 	elem.find( "a" ).wrapAll( "<i>" );
 
 	assert.strictEqual(
-
-		// Support: IE 8 only
-		// IE 8 prints tag names in upper case.
-		elem.html().toLowerCase(),
+		elem.html(),
 		"<i><a><span><em><b></b></em></span></a><a></a></i>",
 		".wrapAll"
 	);

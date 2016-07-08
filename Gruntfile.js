@@ -2,7 +2,8 @@ module.exports = function( grunt ) {
 	"use strict";
 
 	function readOptionalJSON( filepath ) {
-		var data = {};
+		var stripJSONComments = require( "strip-json-comments" ),
+			data = {};
 		try {
 			data = JSON.parse( stripJSONComments(
 				fs.readFileSync( filepath, { encoding: "utf8" } )
@@ -12,24 +13,10 @@ module.exports = function( grunt ) {
 	}
 
 	var fs = require( "fs" ),
-		stripJSONComments = require( "strip-json-comments" ),
 		gzip = require( "gzip-js" ),
-		srcHintOptions = readOptionalJSON( "src/.jshintrc" ),
-		newNode = !/^v0/.test( process.version ),
 
-		// Allow to skip jsdom-related tests in Node.js < 1.0.0
-		runJsdomTests = newNode || ( function() {
-			try {
-				require( "jsdom" );
-				return true;
-			} catch ( e ) {
-				return false;
-			}
-		} )();
-
-	// The concatenated file won't pass onevar
-	// But our modules can
-	delete srcHintOptions.onevar;
+		// Skip jsdom-related tests in Node.js 0.10 & 0.12
+		runJsdomTests = !/^v0/.test( process.version );
 
 	if ( !grunt.option( "filename" ) ) {
 		grunt.option( "filename", "jquery.js" );
@@ -75,6 +62,10 @@ module.exports = function( grunt ) {
 					callbacks: [ "deferred" ],
 					css: [ "effects", "dimensions", "offset" ],
 					"css/showHide": [ "effects" ],
+					deferred: {
+						remove: [ "ajax", "effects", "queue", "core/ready" ],
+						include: [ "core/ready-no-deferred" ]
+					},
 					sizzle: [ "css/hiddenVisibleSelectors", "effects/animatedSelector" ]
 				}
 			}
@@ -101,7 +92,7 @@ module.exports = function( grunt ) {
 
 					"requirejs/require.js": "requirejs/require.js",
 
-					"sinon/fake_timers.js": "sinon/lib/sinon/util/fake_timers.js",
+					"sinon/sinon.js": "sinon/pkg/sinon.js",
 					"sinon/LICENSE.txt": "sinon/LICENSE"
 				}
 			}
@@ -111,33 +102,15 @@ module.exports = function( grunt ) {
 				src: [ "package.json" ]
 			}
 		},
-		jshint: {
-			all: {
-				src: [
-					"src/**/*.js", "Gruntfile.js", "test/**/*.js", "build/**/*.js"
-				],
-				options: {
-					jshintrc: true
-				}
-			},
-			dist: {
-				src: "dist/jquery.js",
-				options: srcHintOptions
-			}
-		},
-		jscs: {
-			src: "src",
-			gruntfile: "Gruntfile.js",
+		eslint: {
+			options: {
 
-			// Check parts of tests that pass
-			test: [
-				"test/data/testrunner.js",
-				"test/unit/animation.js",
-				"test/unit/basic.js",
-				"test/unit/tween.js",
-				"test/unit/wrap.js"
-			],
-			build: "build"
+				// See https://github.com/sindresorhus/grunt-eslint/issues/119
+				quiet: true
+			},
+			all: ".",
+			dist: "dist/jquery.js",
+			dev: [ "src/**/*.js", "Gruntfile.js", "test/**/*.js", "build/**/*.js" ]
 		},
 		testswarm: {
 			tests: [
@@ -171,7 +144,7 @@ module.exports = function( grunt ) {
 			]
 		},
 		watch: {
-			files: [ "<%= jshint.all.src %>" ],
+			files: [ "<%= eslint.dev %>" ],
 			tasks: [ "dev" ]
 		},
 		uglify: {
@@ -183,6 +156,7 @@ module.exports = function( grunt ) {
 				options: {
 					preserveComments: false,
 					sourceMap: true,
+					ASCIIOnly: true,
 					sourceMapName:
 						"dist/<%= grunt.option('filename').replace('.js', '.min.map') %>",
 					report: "min",
@@ -207,7 +181,7 @@ module.exports = function( grunt ) {
 	// Integrate jQuery specific tasks
 	grunt.loadTasks( "build/tasks" );
 
-	grunt.registerTask( "lint", [ "jsonlint", "jshint", "jscs" ] );
+	grunt.registerTask( "lint", [ "jsonlint", "eslint:all" ] );
 
 	// Don't run Node-related tests in Node.js < 1.0.0 as they require an old
 	// jsdom version that needs compiling, making it harder for people to compile
@@ -219,7 +193,16 @@ module.exports = function( grunt ) {
 	) );
 
 	// Short list as a high frequency watch task
-	grunt.registerTask( "dev", [ "build:*:*", "lint", "uglify", "remove_map_comment", "dist:*" ] );
+	grunt.registerTask( "dev", [
+			"build:*:*",
+			"newer:eslint:dev",
+			"uglify",
+			"remove_map_comment",
+			"dist:*"
+		]
+	);
 
-	grunt.registerTask( "default", [ "dev", "test_fast", "compare_size" ] );
+	grunt.registerTask( "default", [ "dev", "eslint:dist", "test_fast", "compare_size" ] );
+
+	grunt.registerTask( "precommit_lint", [ "newer:jsonlint", "newer:eslint:all" ] );
 };

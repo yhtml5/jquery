@@ -323,7 +323,7 @@ QUnit[ jQuery.find.compile ? "test" : "skip" ]( "filter() with positional select
 } );
 
 QUnit.test( "closest()", function( assert ) {
-	assert.expect( 13 );
+	assert.expect( 14 );
 
 	var jq;
 
@@ -344,6 +344,12 @@ QUnit.test( "closest()", function( assert ) {
 	// Test on disconnected node
 	assert.equal( jQuery( "<div><p></p></div>" ).find( "p" ).closest( "table" ).length, 0, "Make sure disconnected closest work." );
 
+	assert.deepEqual(
+		jQuery( "#firstp" ).closest( q( "qunit-fixture" ) ).get(),
+		q( "qunit-fixture" ),
+		"Non-string match target"
+	);
+
 	// Bug #7369
 	assert.equal( jQuery( "<div foo='bar'></div>" ).closest( "[foo]" ).length, 1, "Disconnected nodes with attribute selector" );
 	assert.equal( jQuery( "<div>text</div>" ).closest( "[lang]" ).length, 0, "Disconnected nodes with text and non-existent attribute selector" );
@@ -355,10 +361,17 @@ QUnit.test( "closest()", function( assert ) {
 } );
 
 QUnit[ jQuery.find.compile ? "test" : "skip" ]( "closest() with positional selectors", function( assert ) {
-	assert.expect( 2 );
+	assert.expect( 3 );
 
-	assert.deepEqual( jQuery( "#qunit-fixture" ).closest( "div:first" ).get(), [], "closest(div:first)" );
-	assert.deepEqual( jQuery( "#qunit-fixture div" ).closest( "body:first div:last" ).get(), q( "fx-tests" ), "closest(body:first div:last)" );
+	assert.deepEqual( jQuery( "#qunit-fixture" ).closest( "div:first" ).get(), [],
+		"closest(div:first)" );
+	assert.deepEqual( jQuery( "#qunit-fixture div" ).closest( "body:first div:last" ).get(), [],
+		"closest(body:first div:last)" );
+	assert.deepEqual(
+		jQuery( "#qunit-fixture div" ).closest( "body:first div:last", document ).get(),
+		[],
+		"closest(body:first div:last, document)"
+	);
 } );
 
 QUnit.test( "closest(jQuery)", function( assert ) {
@@ -380,8 +393,31 @@ QUnit.test( "closest(jQuery)", function( assert ) {
 QUnit[ jQuery.find.compile ? "test" : "skip" ]( "not(Selector)", function( assert ) {
 	assert.expect( 7 );
 	assert.equal( jQuery( "#qunit-fixture > p#ap > a" ).not( "#google" ).length, 2, "not('selector')" );
-	assert.deepEqual( jQuery( "p" ).not( ".result" ).get(), q( "firstp", "ap", "sndp", "en", "sap", "first" ), "not('.class')" );
-	assert.deepEqual( jQuery( "p" ).not( "#ap, #sndp, .result" ).get(), q( "firstp", "en", "sap", "first" ), "not('selector, selector')" );
+
+	assert.deepEqual(
+		jQuery( "#qunit-fixture p" ).not( ".result" ).get(),
+		q(
+			"firstp",
+			"ap",
+			"sndp",
+			"en",
+			"sap",
+			"first"
+		),
+		"not('.class')"
+	);
+
+
+	assert.deepEqual(
+		jQuery( "#qunit-fixture p" ).not( "#ap, #sndp, .result" ).get(),
+		q(
+			"firstp",
+			"en",
+			"sap",
+			"first"
+		),
+		"not('selector, selector')"
+	);
 
 	assert.deepEqual( jQuery( "#ap *" ).not( "code" ).get(), q( "google", "groups", "anchor1", "mark" ), "not('tag selector')" );
 	assert.deepEqual( jQuery( "#ap *" ).not( "code, #mark" ).get(), q( "google", "groups", "anchor1" ), "not('tag, ID selector')" );
@@ -427,7 +463,22 @@ QUnit.test( "not(Array)", function( assert ) {
 QUnit.test( "not(jQuery)", function( assert ) {
 	assert.expect( 1 );
 
-	assert.deepEqual( jQuery( "p" ).not( jQuery( "#ap, #sndp, .result" ) ).get(), q( "firstp", "en", "sap", "first" ), "not(jQuery)" );
+	assert.deepEqual(
+		jQuery( "#qunit-fixture p" ).not( jQuery( "#ap, #sndp, .result" ) ).get(),
+		q( "firstp", "en", "sap", "first" ),
+		"not(jQuery)"
+	);
+} );
+
+QUnit.test( "not(Selector) excludes non-element nodes (gh-2808)", function( assert ) {
+	assert.expect( 3 );
+
+	var mixedContents = jQuery( "#nonnodes" ).contents(),
+		childElements = q( "nonnodesElement" );
+
+	assert.deepEqual( mixedContents.not( "*" ).get(), [], "not *" );
+	assert.deepEqual( mixedContents.not( "[id=a],[id=b]" ).get(), childElements, "not [id=a],[id=b]" );
+	assert.deepEqual( mixedContents.not( "[id=a],*,[id=b]" ).get(), [], "not [id=a],*,[id=b]" );
 } );
 
 QUnit.test( "has(Element)", function( assert ) {

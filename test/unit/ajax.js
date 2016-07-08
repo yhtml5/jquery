@@ -28,7 +28,7 @@ QUnit.module( "ajax", {
 
 //----------- jQuery.ajax()
 
-	testIframeWithCallback(
+	testIframe(
 		"XMLHttpRequest - Attempt to block tests because of dangling XHR requests (IE)",
 		"ajax/unreleasedXHR.html",
 		function( assert ) {
@@ -99,7 +99,7 @@ QUnit.module( "ajax", {
 				assert.ok( true, "success" );
 			},
 			fail: function() {
-				if (jQuery.support.cors === false) {
+				if ( jQuery.support.cors === false ) {
 					assert.ok( true, "fail" );
 				}
 			},
@@ -249,9 +249,8 @@ QUnit.module( "ajax", {
 				"Nullable": null,
 				"undefined": undefined
 
-				// Support: Firefox
+				// Support: IE 9 - 11, Edge 12 - 13+
 				// Not all browsers allow empty-string headers
-				// https://bugzilla.mozilla.org/show_bug.cgi?id=815299
 				//"Empty": ""
 			},
 			success: function( data, _, xhr ) {
@@ -364,9 +363,67 @@ QUnit.module( "ajax", {
 				},
 				cache: false,
 				beforeSend: function( xhr, settings ) {
-					// Remove the random number, but ensure the cashe-buster param is there
+					// Remove the random number, but ensure the cache-buster param is there
 					var url = settings.url.replace( /\d+/, "" );
 					assert.equal( url, "data/name.html?abc&devo=hat&_=#brownies", "Make sure that the URL has its hash." );
+					return false;
+				},
+				error: true
+			}
+		];
+	} );
+
+	ajaxTest( "jQuery.ajax() - traditional param encoding", 4, function( assert ) {
+		return [
+			{
+				url: "/",
+				traditional: true,
+				data: {
+					"devo": "hat",
+					"answer": 42,
+					"quux": "a space"
+				},
+				beforeSend: function( xhr, settings ) {
+					assert.equal( settings.url, "/?devo=hat&answer=42&quux=a%20space", "Simple case" );
+					return false;
+				},
+				error: true
+			},
+			{
+				url: "/",
+				traditional: true,
+				data: {
+					"a": [ 1, 2, 3 ],
+					"b[]": [ "b1", "b2" ]
+				},
+				beforeSend: function( xhr, settings ) {
+					assert.equal( settings.url, "/?a=1&a=2&a=3&b%5B%5D=b1&b%5B%5D=b2", "Arrays" );
+					return false;
+				},
+				error: true
+			},
+			{
+				url: "/",
+				traditional: true,
+				data: {
+					"a": [ [ 1, 2 ], [ 3, 4 ], 5 ]
+				},
+				beforeSend: function( xhr, settings ) {
+					assert.equal( settings.url, "/?a=1%2C2&a=3%2C4&a=5", "Nested arrays" );
+					return false;
+				},
+				error: true
+			},
+			{
+				url: "/",
+				traditional: true,
+				data: {
+					"a": [ "w", [ [ "x", "y" ], "z" ] ]
+				},
+				cache: false,
+				beforeSend: function( xhr, settings ) {
+					var url = settings.url.replace( /\d{3,}/, "" );
+					assert.equal( url, "/?a=w&a=x%2Cy%2Cz&_=", "Cache-buster" );
 					return false;
 				},
 				error: true
@@ -1120,7 +1177,7 @@ QUnit.module( "ajax", {
 			},
 			success: function( text ) {
 				assert.strictEqual( typeof text, "string", "json wasn't auto-determined" );
-				var json = jQuery.parseJSON( text );
+				var json = JSON.parse( text );
 				assert.ok( json.length >= 2, "Check length" );
 				assert.strictEqual( json[ 0 ][ "name" ], "John", "Check JSON: first, name" );
 				assert.strictEqual( json[ 0 ][ "age" ], 21, "Check JSON: first, age" );
@@ -1680,11 +1737,11 @@ if ( typeof window.ArrayBuffer === "undefined" || typeof new XMLHttpRequest().re
 } else {
 
 	// No built-in support for binary data, but it's easy to add via a prefilter
-	jQuery.ajaxPrefilter( "arraybuffer", function ( s ) {
+	jQuery.ajaxPrefilter( "arraybuffer", function( s ) {
 		s.xhrFields = { responseType: "arraybuffer" };
 		s.responseFields.arraybuffer = "response";
 		s.converters[ "binary arraybuffer" ] = true;
-	});
+	} );
 
 	ajaxTest( "gh-2498 - jQuery.ajax() - binary data shouldn't throw an exception", 2, function( assert ) {
 		return {
@@ -1699,16 +1756,6 @@ if ( typeof window.ArrayBuffer === "undefined" || typeof new XMLHttpRequest().re
 }
 
 	QUnit.asyncTest( "#11743 - jQuery.ajax() - script, throws exception", 1, function( assert ) {
-
-		// Support: Android 2.3 only
-		// Android 2.3 doesn't fire the window.onerror handler, just accept the reality there.
-		if ( /android 2\.3/i.test( navigator.userAgent ) ) {
-			assert.ok( true, "Test skipped, Android 2.3 doesn't fire window.onerror for " +
-				"errors in dynamically included scripts" );
-			QUnit.start();
-			return;
-		}
-
 		var onerror = window.onerror;
 		window.onerror = function() {
 			assert.ok( true, "Exception thrown" );
@@ -1768,13 +1815,6 @@ if ( typeof window.ArrayBuffer === "undefined" || typeof new XMLHttpRequest().re
 				var parsedXML = jQuery( jQuery.parseXML( "<tab title=\"Added\">blibli</tab>" ) ).find( "tab" );
 				ajaxXML = jQuery( ajaxXML );
 				try {
-
-					// Android 2.3 doesn't automatically adopt nodes from foreign documents.
-					// (see the comment in test/manipulation.js)
-					// Support: Android 2.3
-					if ( /android 2\.3/i.test( navigator.userAgent ) ) {
-						parsedXML = jQuery( ajaxXML[ 0 ].adoptNode( parsedXML[ 0 ] ) );
-					}
 					ajaxXML.find( "infowindowtab" ).append( parsedXML );
 				} catch ( e ) {
 					assert.strictEqual( e, undefined, "error" );
@@ -1844,10 +1884,10 @@ if ( typeof window.ArrayBuffer === "undefined" || typeof new XMLHttpRequest().re
 		};
 	} );
 
-	testIframeWithCallback(
+	testIframe(
 		"#14379 - jQuery.ajax() on unload",
 		"ajax/onunload.html",
-		function( status, assert ) {
+		function( assert, jQuery, window, document, status ) {
 			assert.expect( 1 );
 			assert.strictEqual( status, "success", "Request completed" );
 		}
@@ -1921,7 +1961,7 @@ if ( typeof window.ArrayBuffer === "undefined" || typeof new XMLHttpRequest().re
 			url: url( "data/ajax/content-type.php" ),
 			data: {
 				"content-type": "test/jsontest",
-				"response": JSON.stringify({test: "test"})
+				"response": JSON.stringify( { test: "test" } )
 			},
 			success: function( result ) {
 				assert.strictEqual(
@@ -2098,6 +2138,25 @@ if ( typeof window.ArrayBuffer === "undefined" || typeof new XMLHttpRequest().re
 			jQuery( "#qunit-fixture" ).load( "data/ajax/method.php", function( method ) {
 				assert.equal( method, "GET" );
 				done();
+			} );
+		}
+	);
+
+	QUnit.test(
+		"jQuery#load() - should resolve with correct context", 2,
+		function( assert ) {
+			var done = assert.async();
+			var ps = jQuery( "<p></p><p></p>" );
+			var i = 0;
+
+			ps.appendTo( "#qunit-fixture" );
+
+			ps.load( "data/ajax/method.php", function() {
+				assert.strictEqual( this, ps[ i++ ] );
+
+				if ( i === 2 ) {
+					done();
+				}
 			} );
 		}
 	);

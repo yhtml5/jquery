@@ -406,23 +406,13 @@ QUnit.test( "XML DOM manipulation (#9960)", function( assert ) {
 
 	assert.expect( 5 );
 
-	var scxml1Adopted,
-		xmlDoc1 = jQuery.parseXML( "<scxml xmlns='http://www.w3.org/2005/07/scxml' version='1.0'><state x='100' y='100' initial='actions' id='provisioning'></state><state x='100' y='100' id='error'></state><state x='100' y='100' id='finished' final='true'></state></scxml>" ),
+	var xmlDoc1 = jQuery.parseXML( "<scxml xmlns='http://www.w3.org/2005/07/scxml' version='1.0'><state x='100' y='100' initial='actions' id='provisioning'></state><state x='100' y='100' id='error'></state><state x='100' y='100' id='finished' final='true'></state></scxml>" ),
 		xmlDoc2 = jQuery.parseXML( "<scxml xmlns='http://www.w3.org/2005/07/scxml' version='1.0'><state id='provisioning3'></state></scxml>" ),
 		xml1 = jQuery( xmlDoc1 ),
 		xml2 = jQuery( xmlDoc2 ),
 		scxml1 = jQuery( "scxml", xml1 ),
 		scxml2 = jQuery( "scxml", xml2 ),
 		state = scxml2.find( "state" );
-
-	// Android 2.3 doesn't automatically adopt nodes from foreign documents.
-	// Although technically this is compliant behavior, no other browser
-	// (including newer Android Browsers) behave in this way so do the adopting
-	// just for Android 2.3.
-	// Support: Android 2.3
-	if ( /android 2\.3/i.test( navigator.userAgent ) ) {
-		state = jQuery( xmlDoc1.adoptNode( state[ 0 ] ) );
-	}
 
 	scxml1.append( state );
 	assert.strictEqual( scxml1[ 0 ].lastChild, state[ 0 ], "append" );
@@ -436,13 +426,7 @@ QUnit.test( "XML DOM manipulation (#9960)", function( assert ) {
 	scxml1.find( "#provisioning" ).before( state );
 	assert.strictEqual( scxml1[ 0 ].firstChild, state[ 0 ], "before" );
 
-	// Support: Android 2.3
-	if ( /android 2\.3/i.test( navigator.userAgent ) ) {
-		scxml1Adopted = jQuery( xmlDoc2.adoptNode( scxml1[ 0 ] ) );
-		scxml2.replaceWith( scxml1Adopted );
-	} else {
-		scxml2.replaceWith( scxml1 );
-	}
+	scxml2.replaceWith( scxml1 );
 	assert.deepEqual( jQuery( "state", xml2 ).get(), scxml1.find( "state" ).get(), "replaceWith" );
 } );
 
@@ -495,9 +479,88 @@ QUnit.test( "html(String) tag-hyphenated elements (Bug #1987)", function( assert
 	} );
 
 	var j = jQuery( "<tr-multiple-hyphens><td-with-hyphen>text</td-with-hyphen></tr-multiple-hyphens>" );
-	assert.ok( jQuery.nodeName( j[ 0 ], "TR-MULTIPLE-HYPHENS" ), "Tags with multiple hypens" );
-	assert.ok( jQuery.nodeName( j.children()[ 0 ], "TD-WITH-HYPHEN" ), "Tags with multiple hypens" );
-	assert.equal( j.children().text(), "text", "Tags with multiple hypens behave normally" );
+	assert.ok( jQuery.nodeName( j[ 0 ], "TR-MULTIPLE-HYPHENS" ), "Tags with multiple hyphens" );
+	assert.ok( jQuery.nodeName( j.children()[ 0 ], "TD-WITH-HYPHEN" ), "Tags with multiple hyphens" );
+	assert.equal( j.children().text(), "text", "Tags with multiple hyphens behave normally" );
+} );
+
+QUnit.test( "Tag name processing respects the HTML Standard (gh-2005)", function( assert ) {
+
+	assert.expect( 240 );
+
+	var wrapper = jQuery( "<div></div>" ),
+		nameTerminatingChars = "\x20\t\r\n\f".split( "" ),
+		specialChars = "[ ] { } _ - = + \\ ( ) * & ^ % $ # @ ! ~ ` ' ; ? ¥ « µ λ ⊕ ≈ ξ ℜ ♣ €"
+			.split( " " );
+
+	specialChars.push( specialChars.join( "" ) );
+
+	jQuery.each( specialChars, function( i, characters ) {
+		assertSpecialCharsSupport( "html", characters );
+		assertSpecialCharsSupport( "append", characters );
+	} );
+
+	jQuery.each( nameTerminatingChars, function( i, character ) {
+		assertNameTerminatingCharsHandling( "html", character );
+		assertNameTerminatingCharsHandling( "append", character );
+	} );
+
+	function buildChild( method, html ) {
+		wrapper[ method ]( html );
+		return wrapper.children()[ 0 ];
+	}
+
+	function assertSpecialCharsSupport( method, characters ) {
+		// Support: Android 4.4 only
+		// Chromium < 35 incorrectly upper-cases µ; Android 4.4 uses such a version by default
+		// (and its WebView, being un-updatable, will use it for eternity) so we need to blacklist
+		// that one for the tests to pass.
+		if ( characters === "µ" && /chrome/i.test( navigator.userAgent ) &&
+			navigator.userAgent.match( /chrome\/(\d+)/i )[ 1 ] < 35 ) {
+			assert.ok( true, "This Chromium version upper-cases µ incorrectly; skip test" );
+			assert.ok( true, "This Chromium version upper-cases µ incorrectly; skip test" );
+			assert.ok( true, "This Chromium version upper-cases µ incorrectly; skip test" );
+			return;
+		}
+
+		var child,
+			codepoint = characters.charCodeAt( 0 ).toString( 16 ).toUpperCase(),
+			description = characters.length === 1 ?
+				"U+" + ( "000" + codepoint ).slice( -4 ) + " " + characters :
+				"all special characters",
+			nodeName = "valid" + characters + "tagname";
+
+		child = buildChild( method, "<" + nodeName + "></" + nodeName + ">" );
+		assert.equal( child.nodeName.toUpperCase(), nodeName.toUpperCase(),
+			method + "(): Paired tag name includes " + description );
+
+		child = buildChild( method, "<" + nodeName + ">" );
+		assert.equal( child.nodeName.toUpperCase(), nodeName.toUpperCase(),
+			method + "(): Unpaired tag name includes " + description );
+
+		child = buildChild( method, "<" + nodeName + "/>" );
+		assert.equal( child.nodeName.toUpperCase(), nodeName.toUpperCase(),
+			method + "(): Self-closing tag name includes " + description );
+	}
+
+	function assertNameTerminatingCharsHandling( method, character ) {
+		var child,
+			codepoint = character.charCodeAt( 0 ).toString( 16 ).toUpperCase(),
+			description = "U+" + ( "000" + codepoint ).slice( -4 ) + " " + character,
+			nodeName = "div" + character + "this-will-be-discarded";
+
+		child = buildChild( method, "<" + nodeName + "></" + nodeName + ">" );
+		assert.equal( child.nodeName.toUpperCase(), "DIV",
+			method + "(): Paired tag name terminated by " + description );
+
+		child = buildChild( method, "<" + nodeName + ">" );
+		assert.equal( child.nodeName.toUpperCase(), "DIV",
+			method + "(): Unpaired open tag name terminated by " + description );
+
+		child = buildChild( method, "<" + nodeName + "/>" );
+		assert.equal( child.nodeName.toUpperCase(), "DIV",
+			method + "(): Self-closing tag name terminated by " + description );
+	}
 } );
 
 QUnit.test( "IE8 serialization bug", function( assert ) {
@@ -546,7 +609,7 @@ QUnit.test( "append(xml)", function( assert ) {
 			// IE
 			for ( n = 0, len = aActiveX.length; n < len; n++ ) {
 				try {
-					elem = new ActiveXObject( aActiveX[ n ] );
+					elem = new window.ActiveXObject( aActiveX[ n ] );
 					return elem;
 				} catch ( _ ) {}
 			}
@@ -1112,7 +1175,7 @@ QUnit.test( ".after(disconnected node)", function( assert ) {
 
 QUnit.test( "insertAfter(String)", function( assert ) {
 
-	assert.expect( 1 ) ;
+	assert.expect( 1 );
 
 	var expected = "This is a normal link: Yahoobuga";
 	jQuery( "<b>buga</b>" ).insertAfter( "#yahoo" );
@@ -1148,7 +1211,7 @@ QUnit.test( "insertAfter(jQuery)", function( assert ) {
 
 function testReplaceWith( val, assert ) {
 
-	var tmp, y, child, child2, set, non_existent, $div,
+	var tmp, y, child, child2, set, nonExistent, $div,
 		expected = 29;
 
 	assert.expect( expected );
@@ -1232,8 +1295,8 @@ function testReplaceWith( val, assert ) {
 	assert.deepEqual( jQuery( ".pathological", "#qunit-fixture" ).get(), [],
 		"Replacement with following sibling (context removed)" );
 
-	non_existent = jQuery( "#does-not-exist" ).replaceWith( val( "<b>should not throw an error</b>" ) );
-	assert.equal( non_existent.length, 0, "Length of non existent element." );
+	nonExistent = jQuery( "#does-not-exist" ).replaceWith( val( "<b>should not throw an error</b>" ) );
+	assert.equal( nonExistent.length, 0, "Length of non existent element." );
 
 	$div = jQuery( "<div class='replacewith'></div>" ).appendTo( "#qunit-fixture" );
 	$div.replaceWith( val( "<div class='replacewith'></div><script>" +
@@ -1560,7 +1623,7 @@ QUnit.test( "clone(multiple selected options) (Bug #8129)", function( assert ) {
 	var element = jQuery( "<select><option>Foo</option><option selected>Bar</option><option selected>Baz</option></select>" );
 
 	function getSelectedOptions( collection ) {
-		return collection.find( "option" ).filter(function( option ) {
+		return collection.find( "option" ).filter( function( option ) {
 			return option.selected;
 		} );
 	}
@@ -2174,21 +2237,21 @@ QUnit.test( "domManip executes scripts containing html comments or CDATA (trac-9
 	].join( "\n" ) ).appendTo( "#qunit-fixture" );
 } );
 
-testIframeWithCallback(
+testIframe(
 	"domManip tolerates window-valued document[0] in IE9/10 (trac-12266)",
 	"manipulation/iframe-denied.html",
-	function( test, assert ) {
+	function( assert, jQuery, window, document, test ) {
 		assert.expect( 1 );
 		assert.ok( test.status, test.description );
 	}
 );
 
-testIframeWithCallback(
+testIframe(
 	"domManip executes scripts in iframes in the iframes' context",
 	"manipulation/scripts-context.html",
-	function( frameWindow, bodyElement, html, assert ) {
+	function( assert, framejQuery, frameWindow, frameDocument ) {
 		assert.expect( 2 );
-		jQuery( bodyElement ).append( html );
+		jQuery( frameDocument.body ).append( "<script>window.scriptTest = true;<\x2fscript>" );
 		assert.ok( !window.scriptTest, "script executed in iframe context" );
 		assert.ok( frameWindow.scriptTest, "script executed in iframe context" );
 	}
@@ -2298,18 +2361,6 @@ QUnit.test( "Ensure oldIE creates a new set on appendTo (#8894)", function( asse
 } );
 
 QUnit.asyncTest( "html() - script exceptions bubble (#11743)", 2, function( assert ) {
-
-	// Support: Android 2.3 only
-	// Android 2.3 doesn't fire the window.onerror handler, just accept the reality there.
-	if ( /android 2\.3/i.test( navigator.userAgent ) ) {
-		assert.ok( true, "Test skipped, Android 2.3 doesn't fire window.onerror for " +
-			"errors in dynamically included scripts" );
-		assert.ok( true, "Test skipped, Android 2.3 doesn't fire window.onerror for " +
-			"errors in dynamically included scripts" );
-		QUnit.start();
-		return;
-	}
-
 	var onerror = window.onerror;
 
 	setTimeout( function() {
@@ -2413,7 +2464,7 @@ QUnit.test( "script evaluation (#11795)", function( assert ) {
 	if ( jQuery.ajax ) {
 		Globals.register( "testBar" );
 		jQuery( "#qunit-fixture" ).append( "<script src='" + url( "data/testbar.php" ) + "'/>" );
-		assert.strictEqual( window[ "testBar" ], "bar", "Global script evaluation" );
+		assert.strictEqual( window.testBar, "bar", "Global script evaluation" );
 	} else {
 		assert.ok( true, "No jQuery.ajax" );
 		assert.ok( true, "No jQuery.ajax" );
@@ -2508,7 +2559,7 @@ QUnit.test( "insertAfter, insertBefore, etc do not work when destination is orig
 			"<div id='test4087-multiple'><div class='test4087-multiple'>1</div><div class='test4087-multiple'>2</div></div>"
 		].join( "" ) ).appendTo( "#qunit-fixture" );
 
-		// complex case based on http://jsfiddle.net/pbramos/gZ7vB/
+		// complex case based on https://jsfiddle.net/pbramos/gZ7vB/
 		jQuery( "#test4087-complex div" )[ name ]( "#test4087-complex li:last-child div:last-child" );
 		assert.equal( jQuery( "#test4087-complex li:last-child div" ).length, name === "replaceAll" ? 1 : 2, name + " a node to itself, complex case." );
 
@@ -2694,8 +2745,8 @@ QUnit.test( "Insert script with data-URI (gh-1887)", 1, function( assert ) {
 	jQuery( fixture ).append( "<script src=\"data:text/javascript,testFoo = 'foo';\"></script>" );
 
 	setTimeout( function() {
-		if ( window[ "testSrcFoo" ] === "foo" ) {
-			assert.strictEqual( window[ "testFoo" ], window[ "testSrcFoo" ], "data-URI script executed" );
+		if ( window.testSrcFoo === "foo" ) {
+			assert.strictEqual( window.testFoo, window.testSrcFoo, "data-URI script executed" );
 
 		} else {
 			assert.ok( true, "data-URI script is not supported by this environment" );
